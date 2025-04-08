@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getGameById, updateGame, deleteGame } from '../../services/gameService';
+import { getGameById, updateGame, deleteGame, incrementUserGameCount } from '../../services/gameService';
 import { auth, db } from '../../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { createNotification } from '../../services/notificationService';
@@ -103,6 +103,9 @@ const GameManagement = () => {
         setError('Game is already full');
         return;
       }
+      
+      // Increment the user's game count
+      await incrementUserGameCount(userId);
       
       // Add to participants
       const updatedParticipants = [...(game.participants || [])];

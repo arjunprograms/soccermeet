@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createGame } from '../../services/gameService';
 import { auth } from '../../config/firebase';
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
+import MapView from '../maps/MapView';
 
 const CreateGame = () => {
   const [formData, setFormData] = useState({
@@ -17,6 +19,27 @@ const CreateGame = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: "AIzaSyDHnJPix7q53OnUaO5F4YEh-i_0QV0Y0wQ"
+  });
+  
+  const geocodeAddress = async (address) => {
+    if (!isLoaded || !window.google) return null;
+    
+    const geocoder = new window.google.maps.Geocoder();
+    return new Promise((resolve, reject) => {
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === "OK" && results[0]) {
+          const { lat, lng } = results[0].geometry.location;
+          resolve({ lat: lat(), lng: lng() });
+        } else {
+          resolve(null); // Resolve with null instead of rejecting to avoid errors
+        }
+      });
+    });
+  };
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,6 +65,12 @@ const CreateGame = () => {
     }
     
     try {
+      // Try to geocode the location
+      let coordinates = null;
+      if (formData.location) {
+        coordinates = await geocodeAddress(formData.location);
+      }
+      
       // Combine date and time into a single timestamp
       const timestamp = new Date(`${formData.date}T${formData.time}`);
       
@@ -49,6 +78,7 @@ const CreateGame = () => {
         title: formData.title,
         date: timestamp,
         location: formData.location,
+        coordinates: coordinates, // Add coordinates
         maxPlayers: formData.maxPlayers,
         skillLevel: formData.skillLevel,
         description: formData.description,
@@ -118,6 +148,13 @@ const CreateGame = () => {
             required
           />
         </div>
+        
+        {formData.location && (
+          <div className="location-preview">
+            <h3>Location Preview</h3>
+            <MapView address={formData.location} />
+          </div>
+        )}
         
         <div className="form-group">
           <label>Maximum Players</label>

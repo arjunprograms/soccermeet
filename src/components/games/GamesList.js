@@ -8,13 +8,30 @@ const GamesList = () => {
   const [filteredGames, setFilteredGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [userCoordinates, setUserCoordinates] = useState(null);
   const [filter, setFilter] = useState({
     skillLevel: 'all',
-    status: 'all'
+    status: 'all',
+    maxDistance: 0 // 0 means no limit
   });
   const [sortBy, setSortBy] = useState('date');
   
   useEffect(() => {
+    // Get user's location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserCoordinates({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    }
+    
     const fetchGames = async () => {
       try {
         const gamesData = await getAllGames();
@@ -30,6 +47,19 @@ const GamesList = () => {
     
     fetchGames();
   }, []);
+  
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    // Haversine formula to calculate distance between two points
+    const R = 3958.8; // Radius of the Earth in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in miles
+  };
   
   useEffect(() => {
     // Apply filters and sorting
@@ -59,6 +89,22 @@ const GamesList = () => {
       }
     }
     
+    // Filter by distance
+    if (filter.maxDistance > 0 && userCoordinates) {
+      result = result.filter(game => {
+        if (!game.coordinates) return true; // Include games without coordinates
+        
+        const distance = calculateDistance(
+          userCoordinates.lat, 
+          userCoordinates.lng, 
+          game.coordinates.lat, 
+          game.coordinates.lng
+        );
+        
+        return distance <= filter.maxDistance;
+      });
+    }
+    
     // Sort games
     result.sort((a, b) => {
       const dateA = a.date.toDate ? a.date.toDate() : new Date(a.date);
@@ -76,13 +122,13 @@ const GamesList = () => {
     });
     
     setFilteredGames(result);
-  }, [games, filter, sortBy]);
+  }, [games, filter, sortBy, userCoordinates]);
   
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilter(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'maxDistance' ? parseInt(value) : value
     }));
   };
   
@@ -121,6 +167,21 @@ const GamesList = () => {
             <option value="all">All Games</option>
             <option value="upcoming">Upcoming</option>
             <option value="past">Past</option>
+          </select>
+        </div>
+        
+        <div className="filter-group">
+          <label>Max Distance (miles)</label>
+          <select 
+            name="maxDistance" 
+            value={filter.maxDistance}
+            onChange={handleFilterChange}
+          >
+            <option value="0">Any Distance</option>
+            <option value="5">Within 5 miles</option>
+            <option value="10">Within 10 miles</option>
+            <option value="25">Within 25 miles</option>
+            <option value="50">Within 50 miles</option>
           </select>
         </div>
         

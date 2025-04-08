@@ -11,8 +11,10 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
+    gender: 'not_specified',
     location: '',
-    skillLevel: 'beginner'
+    skillLevel: 'beginner',
+    preferredRadius: 10 // default 10 miles/km
   });
   
   const navigate = useNavigate();
@@ -27,8 +29,10 @@ const Profile = () => {
             setUser(userDoc.data());
             setFormData({
               username: userDoc.data().username || '',
+              gender: userDoc.data().gender || 'not_specified',
               location: userDoc.data().location || '',
-              skillLevel: userDoc.data().skillLevel || 'beginner'
+              skillLevel: userDoc.data().skillLevel || 'beginner',
+              preferredRadius: userDoc.data().preferredRadius || 10
             });
           } else {
             // Create a default profile if one doesn't exist
@@ -36,8 +40,11 @@ const Profile = () => {
             const defaultProfile = {
               username: auth.currentUser.email.split('@')[0],
               email: auth.currentUser.email,
+              gender: 'not_specified',
               location: '',
               skillLevel: 'beginner',
+              preferredRadius: 10,
+              gamesCount: 0,
               createdAt: new Date()
             };
             
@@ -48,8 +55,10 @@ const Profile = () => {
             setUser(defaultProfile);
             setFormData({
               username: defaultProfile.username,
+              gender: defaultProfile.gender,
               location: defaultProfile.location,
-              skillLevel: defaultProfile.skillLevel
+              skillLevel: defaultProfile.skillLevel,
+              preferredRadius: defaultProfile.preferredRadius
             });
           }
         } else {
@@ -80,7 +89,7 @@ const Profile = () => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: name === 'preferredRadius' ? parseInt(value) : value
     });
   };
 
@@ -92,8 +101,10 @@ const Profile = () => {
       const userRef = doc(db, "users", auth.currentUser.uid);
       await updateDoc(userRef, {
         username: formData.username,
+        gender: formData.gender,
         location: formData.location,
         skillLevel: formData.skillLevel,
+        preferredRadius: formData.preferredRadius,
         updatedAt: new Date()
       });
       
@@ -131,6 +142,20 @@ const Profile = () => {
           </div>
           
           <div className="form-group">
+            <label>Gender</label>
+            <select 
+              name="gender" 
+              value={formData.gender}
+              onChange={handleChange}
+            >
+              <option value="not_specified">Prefer not to say</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div className="form-group">
             <label>Location</label>
             <input 
               type="text" 
@@ -153,6 +178,18 @@ const Profile = () => {
             </select>
           </div>
           
+          <div className="form-group">
+            <label>Preferred Radius (miles)</label>
+            <input
+              type="number"
+              name="preferredRadius"
+              min="1"
+              max="50"
+              value={formData.preferredRadius}
+              onChange={handleChange}
+            />
+          </div>
+          
           <div className="button-group">
             <button type="submit">Save</button>
             <button type="button" onClick={() => setEditing(false)}>Cancel</button>
@@ -162,8 +199,16 @@ const Profile = () => {
         <div className="profile-info">
           <p><strong>Email:</strong> {user.email}</p>
           <p><strong>Username:</strong> {user.username || 'Not set'}</p>
+          <p><strong>Gender:</strong> {
+            user.gender === 'male' ? 'Male' : 
+            user.gender === 'female' ? 'Female' : 
+            user.gender === 'other' ? 'Other' : 
+            'Not specified'
+          }</p>
           <p><strong>Location:</strong> {user.location || 'Not set'}</p>
           <p><strong>Skill Level:</strong> {user.skillLevel || 'Beginner'}</p>
+          <p><strong>Preferred Radius:</strong> {user.preferredRadius || 10} miles</p>
+          <p><strong>Games Participated:</strong> {user.gamesCount || 0}</p>
           
           <div className="button-group">
             <button onClick={() => setEditing(true)}>Edit Profile</button>

@@ -4,6 +4,8 @@ import { getGameById, updateGame } from '../../services/gameService';
 import { auth } from '../../config/firebase';
 import LeaveGameButton from './LeaveGameButton';
 import { createNotification } from '../../services/notificationService';
+import MapView from '../maps/MapView';
+import GameChat from './GameChat';
 
 const GameDetails = () => {
   const { gameId } = useParams();
@@ -130,6 +132,11 @@ const GameDetails = () => {
             <p>{game.description}</p>
           </div>
         )}
+        
+        <div className="game-location-map">
+          <h3>Game Location</h3>
+          <MapView address={game.location} location={game.coordinates} />
+        </div>
       </div>
       
       <div className="game-actions">
@@ -174,5 +181,12 @@ const GameDetails = () => {
     </div>
   );
 };
+
+{/* Add the chat section if user is a participant or organizer */}
+{(isOrganizer || isParticipant) && (
+  <div className="game-chat-section">
+    <GameChat gameId={gameId} gameName={game.title} />
+  </div>
+)}
 
 export default GameDetails;

@@ -114,3 +114,23 @@ export const deleteGame = async (gameId) => {
     throw error;
   }
 };
+
+// Increment user's game participation count
+export const incrementUserGameCount = async (userId) => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const currentCount = userDoc.data().gamesCount || 0;
+      await updateDoc(userRef, {
+        gamesCount: currentCount + 1
+      });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error incrementing game count:", error);
+    throw error;
+  }
+};
