@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { auth, db } from '../../config/firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
@@ -9,6 +9,9 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     username: '',
     gender: 'not_specified',
@@ -17,6 +20,7 @@ const Profile = () => {
     preferredRadius: 10,
     preferredTime: 'evening',
     bio: '',
+    profileImage: '',
   });
 
   const navigate = useNavigate();
@@ -38,7 +42,9 @@ const Profile = () => {
             preferredRadius: data.preferredRadius || 10,
             preferredTime: data.preferredTime || 'evening',
             bio: data.bio || '',
+            profileImage: data.profileImage || '',
           });
+          setImagePreview(data.profileImage || '');
         } else {
           const def = {
             username: auth.currentUser.email.split('@')[0],
@@ -49,6 +55,7 @@ const Profile = () => {
             preferredRadius: 10,
             preferredTime: 'evening',
             bio: '',
+            profileImage: '',
             gamesCount: 0,
             createdAt: new Date(),
           };
@@ -73,15 +80,54 @@ const Profile = () => {
     }));
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // File validation
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
+      return;
+    }
+    
+    if (file.size > maxSize) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+    
+    setImageFile(file);
+    
+    // Create local preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target.result;
+      setImagePreview(result);
+      setFormData(prev => ({
+        ...prev,
+        profileImage: result
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
   const saveProfile = async e => {
     e.preventDefault();
     setError('');
     try {
+      // At this point, the image is already in base64 format in formData.profileImage
       const ref = doc(db, 'users', auth.currentUser.uid);
       await updateDoc(ref, { ...formData, updatedAt: new Date() });
       setUser({ ...user, ...formData });
       setEditing(false);
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       setError('Unable to save changes');
     }
   };
@@ -93,11 +139,50 @@ const Profile = () => {
 
   return (
     <div className="bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl">
+      <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-semibold mb-4">Your Profile</h1>
+        
+        {/* Profile Image */}
+        <div className="flex justify-center mb-6">
+          {imagePreview ? (
+            <img 
+              src={imagePreview} 
+              alt="Profile" 
+              className="w-24 h-24 rounded-full object-cover border-2 border-green-500 shadow-md"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center text-white text-2xl font-bold shadow-md">
+              {formData.username ? formData.username.charAt(0).toUpperCase() : 'U'}
+            </div>
+          )}
+        </div>
+        
         <div className="bg-white p-6 rounded-lg shadow-md">
           {editing ? (
             <form onSubmit={saveProfile} className="space-y-6">
+              {/* Profile Image Upload */}
+              <div>
+                <h2 className="text-lg font-medium mb-2">Profile Picture</h2>
+                <div className="flex items-center justify-center mb-4">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    accept="image/*" 
+                    className="hidden"
+                  />
+                  <button 
+                    type="button"
+                    onClick={triggerFileInput}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                    </svg>
+                    <span>Upload Photo</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Basic Information */}
               <div>
@@ -109,7 +194,7 @@ const Profile = () => {
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
-                      className="block w-full border rounded p-2 focus:outline-none"
+                      className="block w-full border rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   </div>
                   <div>
@@ -118,7 +203,7 @@ const Profile = () => {
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                      className="block w-full border rounded p-2 focus:outline-none"
+                      className="block w-full border rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                     >
                       <option value="not_specified">Prefer not to say</option>
                       <option value="male">Male</option>
@@ -133,7 +218,7 @@ const Profile = () => {
                       value={formData.location}
                       onChange={handleChange}
                       placeholder="City, Area"
-                      className="block w-full border rounded p-2 focus:outline-none"
+                      className="block w-full border rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -143,7 +228,7 @@ const Profile = () => {
                       value={formData.bio}
                       onChange={handleChange}
                       rows={3}
-                      className="block w-full border rounded p-2 focus:outline-none"
+                      className="block w-full border rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                   </div>
                 </div>
@@ -159,7 +244,7 @@ const Profile = () => {
                       name="skillLevel"
                       value={formData.skillLevel}
                       onChange={handleChange}
-                      className="block w-full border rounded p-2 focus:outline-none"
+                      className="block w-full border rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                     >
                       <option value="beginner">Beginner</option>
                       <option value="intermediate">Intermediate</option>
@@ -184,7 +269,7 @@ const Profile = () => {
                       name="preferredTime"
                       value={formData.preferredTime}
                       onChange={handleChange}
-                      className="block w-full border rounded p-2 focus:outline-none"
+                      className="block w-full border rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                     >
                       <option value="morning">Morning</option>
                       <option value="afternoon">Afternoon</option>
@@ -215,7 +300,6 @@ const Profile = () => {
             </form>
           ) : (
             <div className="space-y-6">
-
               {/* Display Mode */}
               <div>
                 <h2 className="text-lg font-medium mb-2">Basic Information</h2>
