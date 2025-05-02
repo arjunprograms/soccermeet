@@ -132,7 +132,11 @@ const Profile = () => {
     }
   };
 
-  const label = v => v.charAt(0).toUpperCase() + v.slice(1);
+  // Fixed label function to handle undefined or null values
+  const label = v => {
+    if (!v) return ''; // Return empty string for null, undefined or empty values
+    return v.charAt(0).toUpperCase() + v.slice(1);
+  };
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-600">{error}</div>;
@@ -304,20 +308,20 @@ const Profile = () => {
               <div>
                 <h2 className="text-lg font-medium mb-2">Basic Information</h2>
                 <div className="space-y-2">
-                  <p><strong>Email:</strong> {user.email}</p>
-                  <p><strong>Username:</strong> {user.username}</p>
-                  <p><strong>Gender:</strong> {label(user.gender)}</p>
-                  <p><strong>Location:</strong> {user.location}</p>
-                  <p><strong>Bio:</strong> {user.bio}</p>
+                  <p><strong>Email:</strong> {user?.email || ''}</p>
+                  <p><strong>Username:</strong> {user?.username || ''}</p>
+                  <p><strong>Gender:</strong> {label(user?.gender)}</p>
+                  <p><strong>Location:</strong> {user?.location || ''}</p>
+                  <p><strong>Bio:</strong> {user?.bio || ''}</p>
                 </div>
               </div>
 
               <div>
                 <h2 className="text-lg font-medium mb-2">Soccer Preferences</h2>
                 <div className="space-y-2">
-                  <p><strong>Skill:</strong> {label(user.skillLevel)}</p>
-                  <p><strong>Radius:</strong> {user.preferredRadius} mi</p>
-                  <p><strong>Time:</strong> {label(user.preferredTime)}</p>
+                  <p><strong>Skill:</strong> {label(user?.skillLevel)}</p>
+                  <p><strong>Radius:</strong> {user?.preferredRadius || 0} mi</p>
+                  <p><strong>Time:</strong> {label(user?.preferredTime)}</p>
                 </div>
               </div>
 
